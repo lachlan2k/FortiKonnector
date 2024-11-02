@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fortikonnector
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fortikonnector
+
+rules:
+  - apiGroups: [""]
+
+    resources:
+      [
+        "pods",
+        "namespaces",
+        "nodes",
+        "services",
+        "virtualmachineinstances",
+        "virtualmachines",
+      ]
+    verbs: ["get", "watch", "list"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fortikonnector
+  namespace: fortikonnector
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fortikonnector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fortikonnector
+subjects:
+  - kind: ServiceAccount
+    name: fortikonnector
+    namespace: fortikonnector
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fortikonnector-apikey
+  namespace: fortikonnector
+stringData:
+  API_KEY: hunter2
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortikonnector
+  namespace: fortikonnector
+  labels:
+    app: fortikonnector
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: fortikonnector
+
+  template:
+    metadata:
+      labels:
+        app: fortikonnector
+
+    spec:
+      containers:
+        - name: fortikonnector
+          image: ghcr.io/lachlan2k/fortikonnector:latest
+          env:
+            - name: PORT
+              value: "8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fortikonnector-apikey
+                  key: API_KEY
+          ports:
+            - containerPort: 8080
+              name: http
+      serviceAccountName: fortikonnector
+      automountServiceAccountToken: true
