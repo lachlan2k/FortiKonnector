@@ -77,7 +77,7 @@ spec:
     spec:
       containers:
         - name: fortikonnector
-          image: ghcr.io/lachlan2k/fortikonnector:latest
+          image: ghcr.io/lachlan2k/Frorti:latest
           env:
             - name: PORT
               value: "8080"

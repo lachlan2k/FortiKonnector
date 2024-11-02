@@ -3,8 +3,6 @@ FROM golang:1.21 AS builder
 
 WORKDIR /app
 
-COPY go.sum go.mod .
-RUN go mod download -x
 COPY . .
 RUN go build -o fortikonnector .
 
