@@ -46,6 +46,7 @@ subjects:
     namespace: fortikonnector
 
 ---
+# API Key for the fortigate to use
 apiVersion: v1
 kind: Secret
 metadata:
@@ -54,12 +55,27 @@ metadata:
 stringData:
   API_KEY: hunter2
 
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: fortikonnector-cert
+spec:
+  secretName: fortikonnector-tls-secret
+  dnsNames:
+  - 10.20.100.156
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+
+
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fortikonnector
-  namespace: fortikonnector
   labels:
     app: fortikonnector
 spec:
@@ -77,17 +93,47 @@ spec:
     spec:
       containers:
         - name: fortikonnector
-          image: ghcr.io/lachlan2k/Frorti:latest
+          image: ghcr.io/lachlan2k/fortikonnector:main
+          pullPolicy: Always
           env:
-            - name: PORT
-              value: "8080"
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
                   name: fortikonnector-apikey
                   key: API_KEY
+
+            - name: TLS_CERT_FILE
+              value: /etc/tls/tls.crt
+            - name: TLS_KEY_FILE
+              value: /etc/tls/tls.key
           ports:
-            - containerPort: 8080
-              name: http
-      serviceAccountName: fortikonnector
+            - containerPort: 443
+              name: https
+          volumeMounts:
+          - name: tls-cert
+            mountPath: /etc/tls
+            readOnly: true
+      serviceAccountName: fortigate-connector
       automountServiceAccountToken: true
+
+      volumes:
+      - name: tls-cert
+        secret:
+          secretName: fortikonnector-tls-secret
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortikonnector
+
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.20.100.156
+  ports:
+  - port: 443
+    targetPort: https
+    name: https
+  selector:
+    app: fortikonnector
