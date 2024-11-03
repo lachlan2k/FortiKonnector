@@ -24,10 +24,10 @@ func checkAuth(r *http.Request) bool {
 	prefix := "bearer "
 	token := ""
 
-	if strings.HasPrefix(strings.ToLower(bearer),prefix) {
+	if strings.HasPrefix(strings.ToLower(bearer), prefix) {
 		token = bearer[len(prefix):]
 	}
-	
+
 	return token == authKey
 }
 
@@ -35,6 +35,12 @@ func main() {
 	authKey := os.Getenv("API_KEY")
 	if authKey == "" {
 		log.Fatalf("API_KEY not set")
+	}
+
+	tlsCertFile := os.Getenv("TLS_CERT_FILE")
+	tlsKeyFile := os.Getenv("TLS_KEY_FILE")
+	if tlsCertFile == "" || tlsKeyFile == "" {
+		log.Fatalf("TLS_CERT_FILE and TLS_KEY_FILE not set")
 	}
 
 	config, err := rest.InClusterConfig()
@@ -109,11 +115,11 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "443"
 	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServeTLS(":"+port, tlsCertFile, tlsKeyFile, nil))
 }
 
 func getPods(clientset *kubernetes.Clientset) (*v1.PodList, error) {
